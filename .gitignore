@@ -1,5 +1,11 @@
 .DS_Store
 .idea
 venv
-.env
+.venv
+
+*.env
+!.env.template
+
 .vscode
+
+config.ini

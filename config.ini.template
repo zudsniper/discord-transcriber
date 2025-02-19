@@ -8,13 +8,13 @@ engine = whisper
 # If you changed the engine setting to 'api' above, please enter your OpenAI API Key here.
 # You can find your API Key at https://platform.openai.com/account/api-keys
 # Default = 0
-apikey = 0
+api_key = 0
 
 # Controls whether the bot will automatically transcribe all voice messages
 # true   = Auto-transcribe everything
 # false  = Only transcribe when the context menu command is used
 # Default: false
-automatically = false
+automatically = true
 
 # Controls whether the bot allows non-voice messages to be transcribed
 # true   = Only allow transcribing voice messages
