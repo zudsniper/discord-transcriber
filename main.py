@@ -12,6 +12,9 @@ from discord.ext import commands
 
 from dotenv import load_dotenv
 
+# Import the LiveTranscriber Cog
+from voice_transcriber import LiveTranscriber
+
 load_dotenv(".env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -134,4 +137,6 @@ async def transcribe_command(ctx, message: discord.Message):
 
 
 if __name__ == "__main__":
+	# Load the LiveTranscriber Cog
+	bot.add_cog(LiveTranscriber(bot))
 	bot.run(BOT_TOKEN)
