@@ -90,7 +90,9 @@ async def transcribe_message(message):
 	if result == "":
 		result = "*nothing*"
 	# Send results + truncate in case the transcript is longer than 1900 characters
-	await msg.edit(content="**Audio Message Transcription:\n** ```" + result[:1900] + ("..." if len(result) > 1900 else "") + "```")
+	truncated = len(result) > 1900
+	await msg.edit(content="```" + result[:1900] + ("..." if truncated else "") + "```" + (" *(truncated)*" if truncated else ""))
+	print(f"full transcript: {result}")
 
 
 def is_manager(input: discord.Interaction or discord.message) -> bool:
