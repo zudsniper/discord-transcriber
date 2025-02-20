@@ -3,7 +3,6 @@ import os
 import re
 import sys
 import functools
-import configparser
 
 import discord
 import speech_recognition
@@ -12,27 +11,19 @@ from discord.ext import commands
 
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv(".env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-config = configparser.ConfigParser()
-config.read("config.ini")
+# Replace config.ini with environment variables
+TRANSCRIBE_ENGINE = os.getenv("TRANSCRIBE_ENGINE", "whisper")
+TRANSCRIBE_APIKEY = os.getenv("TRANSCRIBE_APIKEY", "0")
+TRANSCRIBE_AUTOMATICALLY = os.getenv("TRANSCRIBE_AUTOMATICALLY", "true").lower() == "true"
+TRANSCRIBE_VMS_ONLY = os.getenv("TRANSCRIBE_VMS_ONLY", "true").lower() == "true"
 
-if "transcribe" not in config and "admins" not in config:
-	print("Something is wrong with your config.ini file.")
-	sys.exit(1)
-
-try:
-	TRANSCRIBE_ENGINE = config["transcribe"]["engine"]
-	TRANSCRIBE_APIKEY = config["transcribe"]["apikey"]
-	TRANSCRIBE_AUTOMATICALLY = config.getboolean("transcribe", "automatically")
-	TRANSCRIBE_VMS_ONLY = config.getboolean("transcribe", "voice_messages_only")
-	ADMIN_USERS = [int(i) for i in re.split(", |,", config["admins"]["users"])]
-	ADMIN_ROLE = config.getint("admins", "role")
-
-except (configparser.NoOptionError, ValueError):
-	print("Something is wrong with your config.ini file.")
-	sys.exit(1)
+# Convert comma-separated string to list of integers for admin users
+ADMIN_USERS = [int(i.strip()) for i in os.getenv("ADMIN_USERS", "0").split(",") if i.strip()]
+ADMIN_ROLE = int(os.getenv("ADMIN_ROLE", "0"))
 
 intents = discord.Intents.default()
 intents.messages = True
