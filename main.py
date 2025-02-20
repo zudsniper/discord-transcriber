@@ -8,7 +8,8 @@ import configparser
 import discord
 import speech_recognition
 import pydub
-from discord import app_commands
+from discord.ext.commands import CommandType
+from discord.ext import commands
 
 from dotenv import load_dotenv
 
@@ -38,14 +39,16 @@ intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.members = ADMIN_ROLE != 0
-client = discord.Client(command_prefix='!', intents=intents)
-tree = app_commands.CommandTree(client)
+
+# Create Bot instead of Client
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 previous_transcriptions = {}
 
-@client.event
+@bot.event
 async def on_ready():
 	print("BOT READY!")
+	print("Commands ready!")
 
 async def transcribe_message(message):
 	if len(message.attachments) == 0:
@@ -63,23 +66,23 @@ async def transcribe_message(message):
 	voice_file = io.BytesIO(voice_file)
 	
 	# Convert original .ogg file into a .wav file
-	x = await client.loop.run_in_executor(None, pydub.AudioSegment.from_file, voice_file)
+	x = await bot.loop.run_in_executor(None, pydub.AudioSegment.from_file, voice_file)
 	new = io.BytesIO()
-	await client.loop.run_in_executor(None, functools.partial(x.export, new, format='wav'))
+	await bot.loop.run_in_executor(None, functools.partial(x.export, new, format='wav'))
 	
 	# Convert .wav file into speech_recognition's AudioFile format or whatever idrk
 	recognizer = speech_recognition.Recognizer()
 	with speech_recognition.AudioFile(new) as source:
-		audio = await client.loop.run_in_executor(None, recognizer.record, source)
+		audio = await bot.loop.run_in_executor(None, recognizer.record, source)
 	
 	# Runs the file through OpenAI Whisper (or API, if configured in config.ini)
 	if TRANSCRIBE_ENGINE == "whisper":
-		result = await client.loop.run_in_executor(None, recognizer.recognize_whisper, audio)
+		result = await bot.loop.run_in_executor(None, recognizer.recognize_whisper, audio)
 	elif TRANSCRIBE_ENGINE == "api":
 		if TRANSCRIBE_APIKEY == "0":
 			await msg.edit("Transcription failed! (Configured to use Whisper API, but no API Key provided!)")
 			return
-		result = await client.loop.run_in_executor(None, functools.partial(recognizer.recognize_whisper_api, audio, api_key=TRANSCRIBE_APIKEY))
+		result = await bot.loop.run_in_executor(None, functools.partial(recognizer.recognize_whisper_api, audio, api_key=TRANSCRIBE_APIKEY))
 
 	if result == "":
 		result = "*nothing*"
@@ -105,45 +108,31 @@ def is_manager(input: discord.Interaction or discord.message) -> bool:
 	return False
 
 
-@client.event
+@bot.event
 async def on_message(message):
 	if TRANSCRIBE_AUTOMATICALLY and message.flags.voice and len(message.attachments) == 1:
 		await transcribe_message(message)
+	# Make sure we process commands
+	await bot.process_commands(message)
 
-	if message.content == "!synctree" and is_manager(message):
-		await tree.sync(guild=message.guild)
-		await message.reply("Synced!")
-		return
-
-
-# Slash Command / Context Menu Handlers
-@tree.command(name="opensource")
-async def open_source(interaction: discord.Interaction):
+@bot.command(name="opensource", description="Get information about the bot's source code")
+async def open_source(ctx):
 	embed = discord.Embed(
     	title="Open Source",
     	description="This bot is open source! You can find the source code "
-                    "[here](https://https://github.com/RyanCheddar/discord-voice-message-transcriber)",
+                    "[here](https://github.com/RyanCheddar/discord-voice-message-transcriber)",
     	color=0x00ff00
 	)
-	await interaction.response.send_message(embed=embed)
+	await ctx.send(embed=embed)
     
-@tree.command(name="synctree", description="Syncs the bot's command tree.")
-async def synctree(interaction: discord.Interaction):
-	if not is_manager(interaction):
-		await interaction.response.send_message(content="You are not a Bot Manager!")
-		return
-
-	await tree.sync(guild=None)
-	await interaction.response.send_message(content="Synced!")
-    
-@tree.context_menu(name="Transcribe VM")
-async def transcribe_contextmenu(interaction: discord.Interaction, message: discord.Message):
+@bot.command(name="transcribe")
+async def transcribe_command(ctx, message: discord.Message):
 	if message.id in previous_transcriptions:
-		await interaction.response.send_message(content=previous_transcriptions[message.id], ephemeral=True)
+		await ctx.send(content=previous_transcriptions[message.id], ephemeral=True)
 		return
-	await interaction.response.send_message(content="Transcription started!", ephemeral=True)
+	await ctx.send(content="Transcription started!", ephemeral=True)
 	await transcribe_message(message)
 
 
 if __name__ == "__main__":
-	client.run(BOT_TOKEN)
+	bot.run(BOT_TOKEN)
