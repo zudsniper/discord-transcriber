@@ -8,7 +8,6 @@ import configparser
 import discord
 import speech_recognition
 import pydub
-from discord.ext.commands import CommandType
 from discord.ext import commands
 
 from dotenv import load_dotenv
