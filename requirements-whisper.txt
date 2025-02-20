@@ -1,0 +1,2 @@
+numba==0.57.0rc1
+openai-whisper==20230314 

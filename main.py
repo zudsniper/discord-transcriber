@@ -11,7 +11,7 @@ from discord.ext import commands
 
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables first to determine which imports we need
 load_dotenv(".env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -34,6 +34,15 @@ intents.members = ADMIN_ROLE != 0
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 previous_transcriptions = {}
+
+# Only import whisper-related dependencies if using local whisper
+if TRANSCRIBE_ENGINE == "whisper":
+	try:
+		import whisper
+	except ImportError:
+		print("Error: Whisper dependencies not installed. Please install requirements-whisper.txt")
+		print("pip install -r requirements-whisper.txt")
+		sys.exit(1)
 
 @bot.event
 async def on_ready():
@@ -65,14 +74,18 @@ async def transcribe_message(message):
 	with speech_recognition.AudioFile(new) as source:
 		audio = await bot.loop.run_in_executor(None, recognizer.record, source)
 	
-	# Runs the file through OpenAI Whisper (or API, if configured in config.ini)
-	if TRANSCRIBE_ENGINE == "whisper":
-		result = await bot.loop.run_in_executor(None, recognizer.recognize_whisper, audio)
-	elif TRANSCRIBE_ENGINE == "api":
-		if TRANSCRIBE_APIKEY == "0":
-			await msg.edit("Transcription failed! (Configured to use Whisper API, but no API Key provided!)")
-			return
-		result = await bot.loop.run_in_executor(None, functools.partial(recognizer.recognize_whisper_api, audio, api_key=TRANSCRIBE_APIKEY))
+	# Runs the file through OpenAI Whisper (or API, if configured)
+	try:
+		if TRANSCRIBE_ENGINE == "whisper":
+			result = await bot.loop.run_in_executor(None, recognizer.recognize_whisper, audio)
+		elif TRANSCRIBE_ENGINE == "api":
+			if TRANSCRIBE_APIKEY == "0":
+				await msg.edit("Transcription failed! (Configured to use Whisper API, but no API Key provided!)")
+				return
+			result = await bot.loop.run_in_executor(None, functools.partial(recognizer.recognize_whisper_api, audio, api_key=TRANSCRIBE_APIKEY))
+	except Exception as e:
+		await msg.edit(f"Transcription failed! Error: {str(e)}")
+		return
 
 	if result == "":
 		result = "*nothing*"
